@@ -1,7 +1,7 @@
 import { Queue } from 'bullmq';
 import Redis from 'ioredis';
 
-let connection: Redis;
+export let connection: Redis;
 
 if (process.env.REDIS_URL) {
   // 1. Force Node to manually break apart the Upstash string
