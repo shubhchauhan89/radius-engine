@@ -1,0 +1,47 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  extensions = [vector]
+}
+
+model Client {
+  id             String            @id @default(uuid())
+  name           String
+  domain         String
+  niche          String
+  target_cities  String[]
+  apiKey                  String            @unique @default(uuid())
+  logoUrl                 String?
+  primaryColor            String            @default("#2563EB")
+  mainWebsiteUrl          String?
+  contactPhone            String?
+  subscriptionStatus      String?           @default("ACTIVE")
+  generationLimit         Int               @default(100)
+  pagesGeneratedThisMonth Int               @default(0)
+  isActive                Boolean           @default(true)
+  knowledge               ClientKnowledge[]
+  generatedPages          GeneratedPage[]
+}
+
+model ClientKnowledge {
+  id           String                      @id @default(uuid())
+  clientId     String
+  client       Client                      @relation(fields: [clientId], references: [id])
+  sourceUrl    String
+  contentChunk String
+  embedding    Unsupported("vector(768)")?
+}
+
+model GeneratedPage {
+  id          String @id @default(uuid())
+  clientId    String
+  client      Client @relation(fields: [clientId], references: [id])
+  slug        String
+  title       String
+  contentJson Json
+  status      String
+}

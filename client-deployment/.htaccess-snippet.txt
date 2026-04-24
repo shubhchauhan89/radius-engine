@@ -1,0 +1,9 @@
+# ─── Radius SEO Proxy — Apache Rewrite Rules ─────────────────────────────────
+# Paste these lines inside your existing .htaccess file (usually in the web root).
+# They MUST appear BEFORE any CMS rewrite rules (e.g., WordPress, Laravel).
+# ──────────────────────────────────────────────────────────────────────────────
+
+RewriteEngine On
+
+# Route all /locations/* requests to the Radius edge proxy
+RewriteRule ^locations/(.*)$ radius.php [L,QSA]
