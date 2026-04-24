@@ -1,16 +1,15 @@
 import { Queue } from 'bullmq';
 import { Redis } from 'ioredis';
 
-// Initialize Redis connection
-// maxRetriesPerRequest: null is required for BullMQ to work correctly with ioredis
-const redisOptions = {
-  host: process.env.REDIS_HOST || '127.0.0.1',
-  port: process.env.REDIS_PORT ? parseInt(process.env.REDIS_PORT, 10) : 6379,
-  password: process.env.REDIS_PASSWORD || undefined,
-  maxRetriesPerRequest: null,
-};
+// 1. Get the raw URL string from your Render Environment Variable (or fallback to local)
+const redisUrl = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
 
-export const connection = new Redis(redisOptions);
+// 2. Initialize connection: Pass URL as the FIRST argument, options as the SECOND
+export const connection = new Redis(redisUrl, {
+  maxRetriesPerRequest: null, // Required for BullMQ
+  // Upstash uses rediss:// (TLS). This ensures Node accepts the secure certificate.
+  tls: redisUrl.startsWith('rediss://') ? { rejectUnauthorized: false } : undefined,
+});
 
 connection.on('error', (err: Error) => {
   console.error('[Redis] Connection error:', err);
