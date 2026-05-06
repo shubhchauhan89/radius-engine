@@ -109,7 +109,14 @@ export const ingestionWorker = new Worker(
       throw error; // Let BullMQ handle failure and retries
     }
   },
-  { connection, concurrency: 1 }
+  {
+    connection,
+    concurrency: 1,
+    limiter: {
+      max: 14,
+      duration: 60000,
+    }
+  }
 );
 
 ingestionWorker.on('completed', (job) => {

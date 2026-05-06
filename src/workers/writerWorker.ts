@@ -1,13 +1,12 @@
 import { Worker, Job } from 'bullmq';
 import { connection, auditorQueue } from '../queue/setup.js';
 import { prisma } from '../lib/prisma.js';
-import { generateText } from 'ai';
+import { generateObject } from 'ai';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { google } from '../agents/geminiClient.js';
 import { z } from 'zod';
 import { generateFullPageHtml } from '../lib/layoutBuilder.js';
 import { renderComponent } from '../templates/components.js';
-import { parseAIJson } from '../lib/jsonUtils.js';
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY as string);
 
@@ -75,11 +74,24 @@ export const writerWorker = new Worker(
         console.log(`[WriterWorker] Processing component ${index + 1}/${outline.length}: ${sectionType}`);
 
         // 5. Generation
-        console.log(`[WriterWorker] Generating JSON with Gemma 3 27B...`);
-        const { text: jsonContent } = await generateText({
-          model: google('gemma-3-27b-it'),
-          system: `You are a B2B Copywriter. You must output ONLY valid, strict JSON. No HTML, no markdown, no Tailwind classes. Provide engaging copy tailored to the requested component type.
-When generating JSON for the faq component, you MUST provide at least 6 detailed questions and answers. When generating the services component, provide exactly 6 items. When generating the seoArticle component, write at least 4 long, highly detailed paragraphs rich in LSI keywords.
+        console.log(`[WriterWorker] Generating structured object with gemini-3.1-flash-lite...`);
+        
+        const ComponentSchema = z.object({
+          headline: z.string().optional(),
+          subheadline: z.string().optional(),
+          body: z.string().optional(),
+          ctaText: z.string().optional(),
+          items: z.array(z.object({
+            title: z.string(),
+            description: z.string()
+          })).optional()
+        });
+
+        const { object: parsedJson } = await generateObject({
+          model: google('gemini-3.1-flash-lite'),
+          schema: ComponentSchema,
+          system: `You are a B2B Copywriter. Provide engaging copy tailored to the requested component type.
+When generating content for the faq component, you MUST provide at least 6 detailed questions and answers. When generating the services component, provide exactly 6 items. When generating the seoArticle component, write at least 4 long, highly detailed paragraphs rich in LSI keywords.
 For the seoArticle component, you must prove local authority. Using your internal knowledge of the requested city, you MUST seamlessly weave in at least 3 hyper-local geographic entities. Mention specific major highways, well-known industrial sectors, local business parks, or prominent commercial landmarks relevant to the city. Do not use generic phrases like "in the downtown area." Use exact local names.
 
 You are an elite B2B/B2C copywriter. You MUST strictly adhere to the facts provided in the Client Knowledge Base below. Do not invent services, fake credentials, or hallucinate physical addresses.
@@ -100,11 +112,10 @@ City: ${cityId}
 Component to Write:
 Type: ${sectionType}
 
-Write the JSON data for this component. The JSON may include 'headline', 'subheadline', 'body', 'ctaText', 'items' (array with 'title', 'description'). Ensure output is strictly JSON.`
+Write the content data for this component.`
         });
 
         // 6. Stitching
-        const parsedJson = parseAIJson(jsonContent);
         const componentHtml = renderComponent(sectionType, parsedJson, client);
         finalContentBlocks.push(componentHtml);
         console.log(`[WriterWorker] Component ${index + 1} written and stitched successfully.`);
@@ -151,7 +162,14 @@ Write the JSON data for this component. The JSON may include 'headline', 'subhea
       throw error;
     }
   },
-  { connection, concurrency: 1 }
+  {
+    connection,
+    concurrency: 1,
+    limiter: {
+      max: 14,
+      duration: 60000,
+    }
+  }
 );
 
 writerWorker.on('completed', (job) => {

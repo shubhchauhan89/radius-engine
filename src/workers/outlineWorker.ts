@@ -1,9 +1,6 @@
 import { Worker, Job } from 'bullmq';
 import { connection, writerQueue } from '../queue/setup.js';
-import { generateText } from 'ai';
-import { parseAIJson } from '../lib/jsonUtils.js';
-import { google } from '../agents/geminiClient.js';
-import { OutlineSchema } from '../agents/schemas.js';
+
 
 interface OutlineJobData {
   clientId: string;
@@ -55,7 +52,14 @@ export const outlineWorker = new Worker(
       throw error;
     }
   },
-  { connection, concurrency: 1 }
+  {
+    connection,
+    concurrency: 1,
+    limiter: {
+      max: 14,
+      duration: 60000,
+    }
+  }
 );
 
 outlineWorker.on('completed', (job) => {

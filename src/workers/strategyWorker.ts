@@ -1,7 +1,6 @@
 import { Worker, Job } from 'bullmq';
 import { connection, outlineQueue } from '../queue/setup.js';
-import { generateText } from 'ai';
-import { parseAIJson } from '../lib/jsonUtils.js';
+import { generateObject } from 'ai';
 import { google } from '../agents/geminiClient.js';
 import { StrategySchema } from '../agents/schemas.js';
 
@@ -19,19 +18,14 @@ export const strategyWorker = new Worker(
     console.log(`[StrategyWorker] Processing job ${job.id} - Keyword: "${keyword}", City: ${cityId}, Client: ${clientId}`);
 
     try {
-      console.log(`[StrategyWorker] Requesting strategy from Gemma 3 27B for keyword: "${keyword}"...`);
+      console.log(`[StrategyWorker] Requesting strategy from gemini-3.1-flash-lite for keyword: "${keyword}"...`);
 
-      const { text } = await generateText({
-        model: google('gemma-3-27b-it'),
-        system: `You are an Elite Local SEO Strategist. Analyze the given keyword and return a strict JSON object with targetIntent, lsiKeywords, and pageAngle.
-The targetIntent MUST be strictly lowercase: informational, transactional, or local.
-You must return ONLY raw, valid JSON. Do not wrap it in markdown blockquotes. The JSON must match this exact structure: { "targetIntent": "string", "lsiKeywords": ["string"], "pageAngle": "string" }`,
-        prompt: `Analyze this keyword for local SEO: "${keyword}". Create a strategy that dominates the local search results.`,
+      const { object: strategy } = await generateObject({
+        model: google('gemini-3.1-flash-lite'),
+        schema: StrategySchema,
+        system: `You are an Elite Local SEO Strategist. Analyze the given keyword and create a strategy that dominates the local search results.`,
+        prompt: `Analyze this keyword for local SEO: "${keyword}".`,
       });
-
-      const parsedObject = parseAIJson(text);
-      if (parsedObject.targetIntent) { parsedObject.targetIntent = parsedObject.targetIntent.toLowerCase().trim(); }
-      const strategy = StrategySchema.parse(parsedObject);
 
       console.log(`[StrategyWorker] Strategy generated for job ${job.id}. Intent: ${strategy.targetIntent}, Angle: ${strategy.pageAngle}`);
 
@@ -52,7 +46,14 @@ You must return ONLY raw, valid JSON. Do not wrap it in markdown blockquotes. Th
       throw error;
     }
   },
-  { connection, concurrency: 1 }
+  {
+    connection,
+    concurrency: 1,
+    limiter: {
+      max: 14,
+      duration: 60000,
+    }
+  }
 );
 
 strategyWorker.on('completed', (job) => {
