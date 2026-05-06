@@ -74,8 +74,8 @@ export const writerWorker = new Worker(
         console.log(`[WriterWorker] Processing component ${index + 1}/${outline.length}: ${sectionType}`);
 
         // 5. Generation
-        console.log(`[WriterWorker] Generating structured object with gemini-3.1-flash-lite...`);
-        
+        console.log(`[WriterWorker] Generating structured object with gemini-3.1-flash-lite-preview...`);
+
         const ComponentSchema = z.object({
           headline: z.string().optional(),
           subheadline: z.string().optional(),
@@ -88,7 +88,7 @@ export const writerWorker = new Worker(
         });
 
         const { object: parsedJson } = await generateObject({
-          model: google('gemini-3.1-flash-lite'),
+          model: google('gemini-3.1-flash-lite-preview'),
           schema: ComponentSchema,
           system: `You are a B2B Copywriter. Provide engaging copy tailored to the requested component type.
 When generating content for the faq component, you MUST provide at least 6 detailed questions and answers. When generating the services component, provide exactly 6 items. When generating the seoArticle component, write at least 4 long, highly detailed paragraphs rich in LSI keywords.
@@ -129,7 +129,7 @@ Write the content data for this component.`
       const stitchedHtml = finalContentBlocks.join('\n');
       const slug = keyword.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
       const metaDescription = `Looking for ${keyword} in ${cityId}? ${client.name} provides expert ${client.niche} solutions. ${strategy.pageAngle}`;
-      
+
       const finalPageHtml = generateFullPageHtml(client, stitchedHtml, {
         keyword,
         city: cityId,

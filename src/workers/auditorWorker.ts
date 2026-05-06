@@ -37,10 +37,10 @@ export const auditorWorker = new Worker(
       }
 
       // 2. Audit with Gemini
-      console.log(`[AuditorWorker] Requesting audit from gemini-3.1-flash-lite...`);
+      console.log(`[AuditorWorker] Requesting audit from gemini-3.1-flash-lite-preview...`);
 
       const { object: auditResult } = await generateObject({
-        model: google('gemini-3.1-flash-lite'),
+        model: google('gemini-3.1-flash-lite-preview'),
         schema: AuditorSchema,
         system: `You are a Strict SEO Editor and Quality Control Specialist.
 Your task is to audit drafted HTML content for SEO optimization, natural keyword integration, and semantic HTML validity.

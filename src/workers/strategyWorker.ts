@@ -18,10 +18,10 @@ export const strategyWorker = new Worker(
     console.log(`[StrategyWorker] Processing job ${job.id} - Keyword: "${keyword}", City: ${cityId}, Client: ${clientId}`);
 
     try {
-      console.log(`[StrategyWorker] Requesting strategy from gemini-3.1-flash-lite for keyword: "${keyword}"...`);
+      console.log(`[StrategyWorker] Requesting strategy from gemini-3.1-flash-lite-preview for keyword: "${keyword}"...`);
 
       const { object: strategy } = await generateObject({
-        model: google('gemini-3.1-flash-lite'),
+        model: google('gemini-3.1-flash-lite-preview'),
         schema: StrategySchema,
         system: `You are an Elite Local SEO Strategist. Analyze the given keyword and create a strategy that dominates the local search results.`,
         prompt: `Analyze this keyword for local SEO: "${keyword}".`,
