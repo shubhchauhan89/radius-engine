@@ -77,30 +77,37 @@ export const writerWorker = new Worker(
         console.log(`[WriterWorker] Generating structured object with gemini-3.1-flash-lite-preview...`);
 
         const ComponentSchema = z.object({
-          headline: z.string().optional(),
-          subheadline: z.string().optional(),
-          body: z.string().optional(),
-          ctaText: z.string().optional(),
+          headline: z.string().optional().describe("A compelling, natural-sounding H2 headline related to the client's industry. No keyword stuffing."),
+          subheadline: z.string().optional().describe("An engaging subheadline that builds local authority without corporate jargon."),
+          body: z.string().optional().describe("1 to 2 short, highly readable sentences. No run-ons. No keyword stuffing. No B2B jargon."),
+          ctaText: z.string().optional().describe("Action-oriented call-to-action text (e.g., 'Book a Tutor', 'Get a Quote')"),
           items: z.array(z.object({
-            title: z.string(),
-            description: z.string()
+            title: z.string().describe("A short, specific title for the service, problem, or FAQ item"),
+            description: z.string().describe("1 to 2 short, highly readable sentences. No run-ons. No keyword stuffing.")
           })).optional().default([])
         });
 
-        let parsedJson;
         try {
-          const result = await generateObject({
+          const { object: parsedJson } = await generateObject({
             model: google('gemini-3.1-flash-lite-preview'),
             schema: ComponentSchema,
             // @ts-ignore - explicitly requested by user, bypass TS definition mismatch
-            maxTokens: 2500,
-            system: `You are a B2B Copywriter. Provide engaging copy tailored to the requested component type.
-When generating content for the faq component, you MUST provide at least 6 detailed questions and answers. When generating the services component, provide exactly 6 items. When generating the seoArticle component, write at least 4 long, highly detailed paragraphs rich in LSI keywords.
-For the seoArticle component, you must prove local authority. Using your internal knowledge of the requested city, you MUST seamlessly weave in at least 3 hyper-local geographic entities. Mention specific major highways, well-known industrial sectors, local business parks, or prominent commercial landmarks relevant to the city. Do not use generic phrases like "in the downtown area." Use exact local names.
+            maxTokens: 4000,
+            system: `You are an elite, human-sounding local B2C service copywriter. You are writing for local parents and students, NOT corporate executives. NEVER use B2B jargon like 'B2B solutions', 'business demands', 'synergy', or 'elevating your brand'.
+Write in short, punchy, highly readable sentences. ABSOLUTE MAXIMUM of 3 sentences per paragraph. Do NOT write run-on sentences.
+Integrate the primary keyword and LSI keywords NATURALLY. Do NOT force them where they don't belong.
+Do NOT stuff the city or neighborhood name into every sentence. Use it naturally a maximum of 1 or 2 times per component.
+Base your facts strictly on the Client Brain Context. If the context is about tutoring, do not write about manufacturing.
+
+Provide engaging copy tailored to the requested component type.
+When generating content for the faq component, you MUST provide at least 6 detailed questions and answers. When generating the services component, provide exactly 6 items. When generating the seoArticle component, write at least 4 highly readable paragraphs (max 3 sentences each) rich in LSI keywords.
+For the seoArticle component, you must prove local authority without overstuffing. Using your internal knowledge of the requested city, seamlessly weave in 1 or 2 hyper-local geographic entities. Mention specific major highways, local business parks, or prominent commercial landmarks relevant to the city. Do not use generic phrases like "in the downtown area." Use exact local names.
 
 If the Client Knowledge Base does not contain specific information about the requested keyword (e.g., the keyword asks for English, but the knowledge base only lists Math), generalize the answer safely using the client's established tone and location without inventing false syllabus data.
 
-You are an elite B2B/B2C copywriter. You MUST strictly adhere to the facts provided in the Client Knowledge Base below. Do not invent services, fake credentials, or hallucinate physical addresses.
+If the schema requires multiple items (e.g., 3 services) but the Client Brain Context only provides 1 or 2, duplicate the tone and extrapolate highly relevant, localized services based strictly on the industry. Do not return empty arrays if the schema forbids it.
+
+You MUST strictly adhere to the facts provided in the Client Knowledge Base below. Do not invent services, fake credentials, or hallucinate physical addresses.
 --- CLIENT KNOWLEDGE BASE ---
 ${clientBrain}
 --- END KNOWLEDGE BASE ---`,
@@ -120,18 +127,18 @@ Type: ${sectionType}
 
 Write the content data for this component.`
           });
-          parsedJson = result.object;
-        } catch (componentError) {
-          console.error(`[WriterWorker] Error generating component ${sectionType}:`, componentError);
+
+          // 6. Stitching
+          const componentHtml = renderComponent(sectionType, parsedJson, client);
+          finalContentBlocks.push(componentHtml);
+          console.log(`[WriterWorker] Component ${index + 1} written and stitched successfully.`);
+
+        } catch (error: any) {
+          console.error(`[WriterWorker] Component ${sectionType} failed drastically:`, error);
           // Graceful fallback: Push placeholder and continue
           finalContentBlocks.push(`<!-- Fallback placeholder for failed component: ${sectionType} -->`);
           continue;
         }
-
-        // 6. Stitching
-        const componentHtml = renderComponent(sectionType, parsedJson, client);
-        finalContentBlocks.push(componentHtml);
-        console.log(`[WriterWorker] Component ${index + 1} written and stitched successfully.`);
 
         // Rate Limiting Delay
         await new Promise(resolve => setTimeout(resolve, 2100));
