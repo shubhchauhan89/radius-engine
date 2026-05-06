@@ -113,6 +113,7 @@ app.get('/v1/hub', async (req: Request, res: Response): Promise<void> => {
     const finalHtml = generateFullPageHtml(client, hubHtml, pageData);
 
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300');
     res.status(200).send(finalHtml);
   } catch (error) {
     console.error('[Server] Error generating Hub page:', error);
@@ -176,10 +177,18 @@ app.get('/v1/serve', async (req: Request, res: Response): Promise<void> => {
 
     // 4. Return the content as HTML
     // contentJson stores the rendered HTML string (or an object with an html key)
-    const html = typeof page.contentJson === 'string'
+    let html = String(typeof page.contentJson === 'string'
       ? page.contentJson
-      : (page.contentJson as Record<string, unknown>).html ?? JSON.stringify(page.contentJson);
+      : (page.contentJson as Record<string, unknown>).html ?? JSON.stringify(page.contentJson));
 
+    // Process Dynamic Image Token
+    const fallbackImage = `https://placehold.co/600x400/f8fafc/0f172a?text=${encodeURIComponent(client.name || 'Local Service')}`;
+    const finalImageUrl = page.imageUrl || fallbackImage;
+    
+    // Globally replace the token with the DB URL or the fallback
+    html = html.replace(/\{\{DYNAMIC_PAGE_IMAGE\}\}/g, finalImageUrl);
+
+    res.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300');
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.status(200).send(html);
   } catch (error) {

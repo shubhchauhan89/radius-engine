@@ -44,4 +44,5 @@ model GeneratedPage {
   title       String
   contentJson Json
   status      String
+  imageUrl    String?
 }

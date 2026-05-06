@@ -17,9 +17,8 @@ function renderHero(data: ComponentData, client: any): string {
   const ctaLink = data.ctaLink || '#contact';
   const ctaText = data.ctaText || 'Get Started';
 
-  // FIXED: Dynamically use the client's name or a neutral fallback for the image placeholder
-  const placeholderText = client?.name ? encodeURIComponent(client.name) : 'Welcome';
-  const imageUrl = data.imageUrl || `https://placehold.co/600x400/f8fafc/0f172a?text=${placeholderText}`;
+  // If the AI didn't provide an image, insert our dynamic replacement token
+  const imageUrl = data.imageUrl || '{{DYNAMIC_PAGE_IMAGE}}';
 
   return `
     <section class="py-16 sm:py-24 overflow-hidden">
@@ -41,7 +40,7 @@ function renderHero(data: ComponentData, client: any): string {
         </div>
         <div class="mt-12 relative sm:max-w-lg sm:mx-auto lg:mt-0 lg:max-w-none lg:mx-0 lg:col-span-6 lg:flex lg:items-center">
           <div class="relative mx-auto w-full rounded-lg shadow-lg lg:max-w-md overflow-hidden">
-            <img class="w-full object-cover aspect-video" src="${imageUrl}" alt="Hero Image">
+            <img class="w-full object-cover aspect-video rounded-lg shadow-lg" src="${imageUrl}" alt="${data.headline || 'Service Hero Image'}" loading="lazy">
           </div>
         </div>
       </div>
