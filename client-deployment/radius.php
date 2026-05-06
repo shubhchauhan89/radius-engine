@@ -14,7 +14,7 @@
 
 // ─── Configuration ───────────────────────────────────────────────────────────
 define('RADIUS_API_KEY', 'YOUR_API_KEY_HERE');                    // Your Radius API key
-define('RADIUS_API_URL', 'https://your-radius-instance.com');     // Base URL (no trailing slash)
+define('RADIUS_API_URL', 'https://radius-engine.onrender.com');     // Base URL (no trailing slash)
 define('RADIUS_CACHE_DIR', __DIR__ . '/radius_cache');            // Local cache directory
 define('RADIUS_CACHE_TTL', 86400);                                 // Cache lifetime in seconds (24 h)
 // ─────────────────────────────────────────────────────────────────────────────

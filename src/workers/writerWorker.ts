@@ -44,24 +44,29 @@ export const writerWorker = new Worker(
       const finalContentBlocks: string[] = [];
 
       // 3. Vector Retrieval (RAG) - Once for the page keyword
-      console.log(`[WriterWorker] Generating embedding for page keyword: "${keyword}"...`);
+      console.log(`[WriterWorker] Generating embedding for search query...`);
+      const searchQuery = `${keyword} in ${cityId}`;
       const embedModel = genAI.getGenerativeModel({ model: 'gemini-embedding-001' });
-      const embedResult = await embedModel.embedContent(keyword);
+      const embedResult = await embedModel.embedContent({
+        content: { role: 'user', parts: [{ text: searchQuery }] },
+        outputDimensionality: 768
+      } as any);
       const embedding = embedResult.embedding.values;
-      const embeddingStr = JSON.stringify(embedding);
+      const vectorString = `[${embedding.join(',')}]`;
 
-      console.log(`[WriterWorker] Querying vector database for cosine similarity matches...`);
-      const matches = await prisma.$queryRaw<{ contentChunk: string }[]>`
+      console.log(`[WriterWorker] Querying vector database for semantic matches...`);
+      const relevantKnowledge = await prisma.$queryRaw<{ contentChunk: string }[]>`
         SELECT "contentChunk" 
         FROM "ClientKnowledge" 
         WHERE "clientId" = ${clientId} 
-        ORDER BY embedding <=> ${embeddingStr}::vector 
-        LIMIT 2;
+        ORDER BY embedding <-> ${vectorString}::vector 
+        LIMIT 3;
       `;
-      let retrievedFacts = '';
-      if (matches && matches.length > 0) {
-        retrievedFacts = matches.map((m) => m.contentChunk).join('\n\n');
+      let clientBrain = '';
+      if (relevantKnowledge && relevantKnowledge.length > 0) {
+        clientBrain = relevantKnowledge.map((k) => k.contentChunk).join('\n\n');
       }
+      console.log(`[WriterWorker] Retrieved Client Brain Context:\n${clientBrain}\n`);
 
       // 4. Assembly Loop
       console.log(`[WriterWorker] Starting assembly loop for ${outline.length} components...`);
@@ -75,7 +80,12 @@ export const writerWorker = new Worker(
           model: google('gemma-3-27b-it'),
           system: `You are a B2B Copywriter. You must output ONLY valid, strict JSON. No HTML, no markdown, no Tailwind classes. Provide engaging copy tailored to the requested component type.
 When generating JSON for the faq component, you MUST provide at least 6 detailed questions and answers. When generating the services component, provide exactly 6 items. When generating the seoArticle component, write at least 4 long, highly detailed paragraphs rich in LSI keywords.
-For the seoArticle component, you must prove local authority. Using your internal knowledge of the requested city, you MUST seamlessly weave in at least 3 hyper-local geographic entities. Mention specific major highways, well-known industrial sectors, local business parks, or prominent commercial landmarks relevant to the city. Do not use generic phrases like "in the downtown area." Use exact local names.`,
+For the seoArticle component, you must prove local authority. Using your internal knowledge of the requested city, you MUST seamlessly weave in at least 3 hyper-local geographic entities. Mention specific major highways, well-known industrial sectors, local business parks, or prominent commercial landmarks relevant to the city. Do not use generic phrases like "in the downtown area." Use exact local names.
+
+You are an elite B2B/B2C copywriter. You MUST strictly adhere to the facts provided in the Client Knowledge Base below. Do not invent services, fake credentials, or hallucinate physical addresses.
+--- CLIENT KNOWLEDGE BASE ---
+${clientBrain}
+--- END KNOWLEDGE BASE ---`,
           prompt: `
 Client Context:
 Name: ${client.name}
@@ -89,9 +99,6 @@ City: ${cityId}
 
 Component to Write:
 Type: ${sectionType}
-
-Retrieved Database Facts (RAG):
-${retrievedFacts || 'None provided.'}
 
 Write the JSON data for this component. The JSON may include 'headline', 'subheadline', 'body', 'ctaText', 'items' (array with 'title', 'description'). Ensure output is strictly JSON.`
         });
