@@ -78,13 +78,13 @@ export const writerWorker = new Worker(
 
         const ComponentSchema = z.object({
           headline: z.string().max(120).optional().default("").describe("A compelling headline strictly tailored to the industry. MAXIMUM 120 characters. DO NOT stuff SEO keywords here."),
-          subheadline: z.string().max(250).optional().default("").describe("A brief, punchy subtext. MAXIMUM 250 characters. DO NOT stuff SEO keywords here."),
-          body: z.string().max(800).optional().default("").describe("2-3 short, highly readable sentences integrating the LSI keywords naturally. Tailored to the client's industry. NO run-on sentences."),
+          subheadline: z.string().max(150).optional().default("").describe("MAXIMUM 1 SHORT SENTENCE. DO NOT PUT PARAGRAPHS OR BODY TEXT HERE. Keep it under 150 characters."),
+          body: z.string().max(800).optional().default("").describe("PUT YOUR MAIN PARAGRAPHS AND SEO KEYWORDS HERE. This is the main content area."),
           ctaText: z.string().max(60).optional().default("").describe("Action-oriented call-to-action text suitable for the industry (e.g., 'Request Quote', 'Book Now')"),
-          paragraphs: z.array(z.string().max(400)).max(5).optional().default([]).describe("An array of highly readable paragraphs integrating the LSI keywords. Max 3 sentences per paragraph. Max 5 paragraphs total."),
+          paragraphs: z.array(z.string().max(400)).max(5).optional().default([]).describe("PUT YOUR MAIN CONTENT AND SEO KEYWORDS HERE as an array of short paragraphs."),
           items: z.array(z.object({
             title: z.string().max(100).optional().default("").describe("A short, specific title for the service, problem, or FAQ item"),
-            description: z.string().max(400).optional().default("").describe("2-3 short, highly readable sentences integrating the LSI keywords naturally. Tailored to the industry context. NO run-on sentences.")
+            description: z.string().max(400).optional().default("").describe("PUT YOUR SEO KEYWORDS AND FEATURE DESCRIPTIONS HERE.")
           })).max(6).optional().default([])
         });
 
@@ -103,6 +103,10 @@ The Keyword Mandate: You must integrate the provided LSI keywords naturally, BUT
 - Save the bulk of the SEO keywords for longer fields like \`body\`, \`paragraphs\`, or \`description\`. If a keyword doesn't fit naturally into a short component, LEAVE IT OUT of that component. You will have room in the other components.
 Do NOT stuff the city or neighborhood name into every sentence. Use it naturally a maximum of 1 or 2 times per component.
 Base your facts strictly on the Client Brain Context.
+
+**Field Mapping Rule:** You must place content in the correct JSON fields. 
+1. NEVER put paragraphs, long explanations, or keyword dumps into the \`subheadline\` field. \`subheadline\` is for a single, short tagline.
+2. Put your main content, long-form text, and all LSI keywords into the \`body\`, \`paragraphs\`, or \`items.description\` fields.
 
 Brevity Rule: NEVER generate more than 3 to 5 items for any list, service array, or FAQ section. Prioritize quality over quantity. Do not repeat yourself.
 
