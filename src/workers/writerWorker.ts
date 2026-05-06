@@ -77,8 +77,8 @@ export const writerWorker = new Worker(
         console.log(`[WriterWorker] Generating structured object with gemini-3.1-flash-lite-preview...`);
 
         const ComponentSchema = z.object({
-          headline: z.string().max(100).optional().default("").describe("A compelling, keyword-rich H2 headline strictly tailored to the client's specific industry and target audience as defined in the Client Brain Context."),
-          subheadline: z.string().max(200).optional().default("").describe("An engaging subheadline that builds authority tailored to the specific industry. No generic filler."),
+          headline: z.string().max(120).optional().default("").describe("A compelling headline strictly tailored to the industry. MAXIMUM 120 characters. DO NOT stuff SEO keywords here."),
+          subheadline: z.string().max(250).optional().default("").describe("A brief, punchy subtext. MAXIMUM 250 characters. DO NOT stuff SEO keywords here."),
           body: z.string().max(800).optional().default("").describe("2-3 short, highly readable sentences integrating the LSI keywords naturally. Tailored to the client's industry. NO run-on sentences."),
           ctaText: z.string().max(60).optional().default("").describe("Action-oriented call-to-action text suitable for the industry (e.g., 'Request Quote', 'Book Now')"),
           paragraphs: z.array(z.string().max(400)).max(5).optional().default([]).describe("An array of highly readable paragraphs integrating the LSI keywords. Max 3 sentences per paragraph. Max 5 paragraphs total."),
@@ -98,7 +98,9 @@ export const writerWorker = new Worker(
             system: `You are an elite, chameleon-like copywriter. Before writing a single word, analyze the 'Client Brain Context'. Instantly adopt the precise tone, vocabulary, and formatting standards of that specific industry. If the context is B2B manufacturing, be highly technical, authoritative, and corporate. If the context is B2C local services, be approachable, empathetic, and consumer-focused.
 Do not use generic marketing filler. Avoid phrases like 'elevate your brand', 'unlock your potential', or 'paradigm shift' regardless of the industry.
 Write in short, punchy, highly readable sentences. ABSOLUTE MAXIMUM of 3 sentences per paragraph. Do NOT write run-on sentences.
-You MUST seamlessly integrate every provided LSI keyword in the text. Distribute them naturally. Do not stuff them all into one sentence.
+The Keyword Mandate: You must integrate the provided LSI keywords naturally, BUT you must distribute them logically.
+- DO NOT stuff keywords into short fields like \`headline\`, \`subheadline\`, or \`ctaText\`. Keep those fields punchy and conversion-focused.
+- Save the bulk of the SEO keywords for longer fields like \`body\`, \`paragraphs\`, or \`description\`. If a keyword doesn't fit naturally into a short component, LEAVE IT OUT of that component. You will have room in the other components.
 Do NOT stuff the city or neighborhood name into every sentence. Use it naturally a maximum of 1 or 2 times per component.
 Base your facts strictly on the Client Brain Context.
 
