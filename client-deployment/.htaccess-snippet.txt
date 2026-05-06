@@ -7,3 +7,15 @@ RewriteEngine On
 
 # Route all /locations/* requests to the Radius edge proxy
 RewriteRule ^locations/(.*)$ radius.php [L,QSA]
+
+# for new htaccess file
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+
+    # --- S2 Logic: Radius Engine Routing ---
+    RewriteRule ^locations/?$ radius.php [L,QSA]
+    RewriteRule ^locations/(.+)$ radius.php [L,QSA]
+    # ---------------------------------------
+</IfModule>

@@ -77,14 +77,15 @@ export const writerWorker = new Worker(
         console.log(`[WriterWorker] Generating structured object with gemini-3.1-flash-lite-preview...`);
 
         const ComponentSchema = z.object({
-          headline: z.string().optional().describe("A compelling, natural-sounding H2 headline related to the client's industry. No keyword stuffing."),
-          subheadline: z.string().optional().describe("An engaging subheadline that builds local authority without corporate jargon."),
-          body: z.string().optional().describe("1 to 2 short, highly readable sentences. No run-ons. No keyword stuffing. No B2B jargon."),
-          ctaText: z.string().optional().describe("Action-oriented call-to-action text (e.g., 'Book a Tutor', 'Get a Quote')"),
+          headline: z.string().max(100).optional().default("").describe("A compelling, keyword-rich H2 headline strictly tailored to the client's specific industry and target audience as defined in the Client Brain Context."),
+          subheadline: z.string().max(200).optional().default("").describe("An engaging subheadline that builds authority tailored to the specific industry. No generic filler."),
+          body: z.string().max(800).optional().default("").describe("2-3 short, highly readable sentences integrating the LSI keywords naturally. Tailored to the client's industry. NO run-on sentences."),
+          ctaText: z.string().max(60).optional().default("").describe("Action-oriented call-to-action text suitable for the industry (e.g., 'Request Quote', 'Book Now')"),
+          paragraphs: z.array(z.string().max(400)).max(5).optional().default([]).describe("An array of highly readable paragraphs integrating the LSI keywords. Max 3 sentences per paragraph. Max 5 paragraphs total."),
           items: z.array(z.object({
-            title: z.string().describe("A short, specific title for the service, problem, or FAQ item"),
-            description: z.string().describe("1 to 2 short, highly readable sentences. No run-ons. No keyword stuffing.")
-          })).optional().default([])
+            title: z.string().max(100).optional().default("").describe("A short, specific title for the service, problem, or FAQ item"),
+            description: z.string().max(400).optional().default("").describe("2-3 short, highly readable sentences integrating the LSI keywords naturally. Tailored to the industry context. NO run-on sentences.")
+          })).max(6).optional().default([])
         });
 
         try {
@@ -93,17 +94,22 @@ export const writerWorker = new Worker(
             schema: ComponentSchema,
             // @ts-ignore - explicitly requested by user, bypass TS definition mismatch
             maxTokens: 4000,
-            system: `You are an elite, human-sounding local B2C service copywriter. You are writing for local parents and students, NOT corporate executives. NEVER use B2B jargon like 'B2B solutions', 'business demands', 'synergy', or 'elevating your brand'.
+            temperature: 0.3,
+            system: `You are an elite, chameleon-like copywriter. Before writing a single word, analyze the 'Client Brain Context'. Instantly adopt the precise tone, vocabulary, and formatting standards of that specific industry. If the context is B2B manufacturing, be highly technical, authoritative, and corporate. If the context is B2C local services, be approachable, empathetic, and consumer-focused.
+Do not use generic marketing filler. Avoid phrases like 'elevate your brand', 'unlock your potential', or 'paradigm shift' regardless of the industry.
 Write in short, punchy, highly readable sentences. ABSOLUTE MAXIMUM of 3 sentences per paragraph. Do NOT write run-on sentences.
-Integrate the primary keyword and LSI keywords NATURALLY. Do NOT force them where they don't belong.
+You MUST seamlessly integrate every provided LSI keyword in the text. Distribute them naturally. Do not stuff them all into one sentence.
 Do NOT stuff the city or neighborhood name into every sentence. Use it naturally a maximum of 1 or 2 times per component.
-Base your facts strictly on the Client Brain Context. If the context is about tutoring, do not write about manufacturing.
+Base your facts strictly on the Client Brain Context.
+
+Brevity Rule: NEVER generate more than 3 to 5 items for any list, service array, or FAQ section. Prioritize quality over quantity. Do not repeat yourself.
 
 Provide engaging copy tailored to the requested component type.
-When generating content for the faq component, you MUST provide at least 6 detailed questions and answers. When generating the services component, provide exactly 6 items. When generating the seoArticle component, write at least 4 highly readable paragraphs (max 3 sentences each) rich in LSI keywords.
+When generating content for the faq component, provide detailed questions and answers. When generating the services component, provide items. When generating the seoArticle component, write highly readable paragraphs (max 3 sentences each) rich in LSI keywords.
 For the seoArticle component, you must prove local authority without overstuffing. Using your internal knowledge of the requested city, seamlessly weave in 1 or 2 hyper-local geographic entities. Mention specific major highways, local business parks, or prominent commercial landmarks relevant to the city. Do not use generic phrases like "in the downtown area." Use exact local names.
 
-If the Client Knowledge Base does not contain specific information about the requested keyword (e.g., the keyword asks for English, but the knowledge base only lists Math), generalize the answer safely using the client's established tone and location without inventing false syllabus data.
+If the provided 'SEO Keywords' request a specific sub-niche, geography, or service that is NOT explicitly mentioned in the 'Client Brain Context', DO NOT PANIC and DO NOT hallucinate fake credentials. You must bridge the gap smoothly. 
+Example Framework: 'While our core expertise is rooted in [Core Client Context], our foundational infrastructure and methods are perfectly equipped to handle [Requested SEO Keyword].'
 
 If the schema requires multiple items (e.g., 3 services) but the Client Brain Context only provides 1 or 2, duplicate the tone and extrapolate highly relevant, localized services based strictly on the industry. Do not return empty arrays if the schema forbids it.
 
