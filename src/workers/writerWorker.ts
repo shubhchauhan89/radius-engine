@@ -84,21 +84,27 @@ export const writerWorker = new Worker(
           items: z.array(z.object({
             title: z.string(),
             description: z.string()
-          })).optional()
+          })).optional().default([])
         });
 
-        const { object: parsedJson } = await generateObject({
-          model: google('gemini-3.1-flash-lite-preview'),
-          schema: ComponentSchema,
-          system: `You are a B2B Copywriter. Provide engaging copy tailored to the requested component type.
+        let parsedJson;
+        try {
+          const result = await generateObject({
+            model: google('gemini-3.1-flash-lite-preview'),
+            schema: ComponentSchema,
+            // @ts-ignore - explicitly requested by user, bypass TS definition mismatch
+            maxTokens: 2500,
+            system: `You are a B2B Copywriter. Provide engaging copy tailored to the requested component type.
 When generating content for the faq component, you MUST provide at least 6 detailed questions and answers. When generating the services component, provide exactly 6 items. When generating the seoArticle component, write at least 4 long, highly detailed paragraphs rich in LSI keywords.
 For the seoArticle component, you must prove local authority. Using your internal knowledge of the requested city, you MUST seamlessly weave in at least 3 hyper-local geographic entities. Mention specific major highways, well-known industrial sectors, local business parks, or prominent commercial landmarks relevant to the city. Do not use generic phrases like "in the downtown area." Use exact local names.
+
+If the Client Knowledge Base does not contain specific information about the requested keyword (e.g., the keyword asks for English, but the knowledge base only lists Math), generalize the answer safely using the client's established tone and location without inventing false syllabus data.
 
 You are an elite B2B/B2C copywriter. You MUST strictly adhere to the facts provided in the Client Knowledge Base below. Do not invent services, fake credentials, or hallucinate physical addresses.
 --- CLIENT KNOWLEDGE BASE ---
 ${clientBrain}
 --- END KNOWLEDGE BASE ---`,
-          prompt: `
+            prompt: `
 Client Context:
 Name: ${client.name}
 Niche: ${client.niche}
@@ -113,7 +119,14 @@ Component to Write:
 Type: ${sectionType}
 
 Write the content data for this component.`
-        });
+          });
+          parsedJson = result.object;
+        } catch (componentError) {
+          console.error(`[WriterWorker] Error generating component ${sectionType}:`, componentError);
+          // Graceful fallback: Push placeholder and continue
+          finalContentBlocks.push(`<!-- Fallback placeholder for failed component: ${sectionType} -->`);
+          continue;
+        }
 
         // 6. Stitching
         const componentHtml = renderComponent(sectionType, parsedJson, client);
